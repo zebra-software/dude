@@ -11,14 +11,14 @@ android {
 
     defaultConfig {
         applicationId = "com.zebrasoftware.dude"
-        minSdk = 31
+        minSdk = 36
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Only 64-bit ARM, which every phone since Android 12 uses. The map engine's
+        // Only 64-bit ARM, which every Android 16 phone uses. The map engine's
         // native code for other processor types would add about 35 MB to the APK.
         ndk {
             abiFilters += listOf("arm64-v8a")

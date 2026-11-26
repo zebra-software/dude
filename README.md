@@ -25,7 +25,7 @@ Your parking spot is saved locally on your device.
 
 Get the latest APK from the [Releases](../../releases) page.
 
-Dude needs Android 12 or newer.
+Dude needs Android 16 or newer.
 
 ## Credits
 
