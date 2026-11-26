@@ -16,7 +16,7 @@ Your parking spot is saved locally on your device.
 ## Screenshots
 
 <p>
-  <img src="screenshots/parked-light.png" alt="Parked car in light mode" width="260">
+  <img src="screenshots/start-light.png" alt="Selecting a parking spot in light mode" width="260">
   <img src="screenshots/parked-dark.png" alt="Parked car in dark mode" width="260">
   <img src="screenshots/search-light.png" alt="Searching for an address" width="260">
 </p>
