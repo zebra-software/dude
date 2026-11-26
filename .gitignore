@@ -1,0 +1,18 @@
+*.iml
+.gradle
+/local.properties
+# IDE settings are per-machine (device serials, local paths)
+/.idea/
+.kotlin/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Signing keys and release output
+*.jks
+*.keystore
+keystore.properties
+/app/release

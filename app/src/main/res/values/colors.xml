@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon colours, taken from the app icon artwork. -->
+    <color name="dude_icon_background">#FF06498C</color>
+    <color name="dude_icon_rim">#FF16589A</color>
+    <color name="dude_icon_pin">#FFD9E9FF</color>
+    <color name="dude_icon_disc">#FFFFFFFF</color>
+    <color name="dude_icon_dot">#FF2D6DAD</color>
+</resources>
