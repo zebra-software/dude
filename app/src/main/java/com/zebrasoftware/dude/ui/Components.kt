@@ -71,6 +71,7 @@ internal fun FloorField(
     onFloorChange: (String) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onFocusChange: (Boolean) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -84,6 +85,7 @@ internal fun FloorField(
                 onFocusChange(it.isFocused)
                 if (!it.isFocused) onDone()
             },
+        enabled = enabled,
         singleLine = true,
         label = { Text(stringResource(R.string.floor_label)) },
         placeholder = { Text(stringResource(R.string.floor_placeholder)) },

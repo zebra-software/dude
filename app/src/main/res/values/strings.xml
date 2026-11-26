@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Dude</string>
+    <string name="app_name">Dude, Where\'s My Car?</string>
 
     <!-- Top bar -->
     <string name="title_empty">Dude, Where\'s My Car?</string>
@@ -7,18 +7,18 @@
 
     <!-- Choosing how to set the spot -->
     <string name="choose_title">Select your parking spot</string>
-    <string name="choose_body">Select your parking spot with GPS or by searching the map.</string>
-    <string name="action_use_gps">Use GPS</string>
+    <string name="choose_body">Find your spot with GPS, then move the pin or search to adjust it.</string>
     <string name="action_set_spot">Set parking spot</string>
 
     <!-- Getting a GPS fix -->
     <string name="locating_title">Finding your location…</string>
     <string name="locating_waiting">Waiting for GPS…</string>
     <string name="locating_accuracy">Accurate to about %1$d m</string>
-    <string name="action_pick_instead">Pick on map</string>
+    <string name="action_search_instead">Search instead</string>
 
     <!-- Picking on the map -->
-    <string name="hint_pick">Search, use GPS, or move the map so the pin is on your car.</string>
+    <string name="hint_pick">Search, or move the map so the pin is on your car.</string>
+    <string name="hint_gps_found">Found you to within about %1$d m. Move the map if the pin isn\'t on your car.</string>
     <string name="hint_approximate">GPS is only accurate to about %1$d m. Move the map so the pin is on your car.</string>
     <string name="hint_no_fix">Couldn\'t get a GPS fix. Search, or move the map so the pin is on your car.</string>
     <string name="hint_no_permission">Without location access, search or move the map so the pin is on your car.</string>
@@ -32,17 +32,28 @@
     <string name="finding_address">Finding address…</string>
     <string name="parked_car">Parked car</string>
     <string name="action_navigate">Navigate</string>
-    <string name="action_change">Change</string>
-    <string name="msg_saved_gps">Parking spot saved from GPS. Tap Change to adjust it.</string>
 
     <!-- Parking floor -->
     <string name="floor_label">Parking floor</string>
     <string name="floor_placeholder">Optional, e.g. P2 or level -1</string>
 
+    <!-- Car photo -->
+    <string name="action_take_photo">Take a photo of your car</string>
+    <string name="action_view_photo">View the photo of your car</string>
+    <string name="photo_title">Your car</string>
+    <string name="photo_missing">The photo could not be opened.</string>
+    <string name="action_retake">Retake</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_close">Close</string>
+    <string name="delete_photo_title">Delete photo?</string>
+    <string name="delete_photo_body">This removes the photo of your car from this device.</string>
+    <string name="msg_photo_saved">Photo saved</string>
+    <string name="msg_no_camera">No camera app found</string>
+
     <!-- Clear -->
     <string name="action_clear">Clear parking spot</string>
     <string name="clear_title">Clear parking spot?</string>
-    <string name="clear_body">This removes the saved location and parking floor from this device.</string>
+    <string name="clear_body">This removes the saved location, parking floor and photo from this device.</string>
     <string name="action_clear_confirm">Clear</string>
     <string name="action_cancel">Cancel</string>
 
@@ -57,7 +68,7 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="settings_about">About</string>
-    <string name="about_title">Dude, by Zebra Software</string>
-    <string name="about_body">Your parking spot is saved locally on your device.</string>
+    <string name="about_title">Dude, Where\'s My Car? by Zebra Software</string>
+    <string name="about_body">Your parking spot and photo are saved locally on your device.</string>
     <string name="about_credits">Map tiles from OpenFreeMap, using OpenMapTiles and OpenStreetMap data © OpenStreetMap contributors. Place search and addresses by Photon (komoot).</string>
 </resources>

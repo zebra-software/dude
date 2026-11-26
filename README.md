@@ -1,31 +1,33 @@
-# Dude
+# Dude, Where's My Car?
 
-A simple app for remembering where you parked your car. Dude, where's my car?
+A simple app for remembering where you parked your car.
 
 ## Features
 
-- Save your parking spot with GPS, or search for an address and place the pin yourself on the map. Works even with poor or no GPS.
+- Find your parking spot with GPS in one tap, then fine-tune the pin on the map before saving it
+- No GPS signal, or no location access? Search for an address and place the pin yourself
 - Note which floor you parked on
+- Take a photo of your car to help you find it, and view, retake or delete it any time
 - See the address and when you parked
 - Navigate back to your car with your favourite maps app
 - Detailed map in both light and dark mode
 - Light, dark or phone theme, built with Material Design 3
 
-Your parking spot is saved locally on your device.
+Your parking spot and photo are saved locally on your device and are not included in backups.
 
 ## Screenshots
 
 <p>
-  <img src="screenshots/start-light.png" alt="Selecting a parking spot in light mode" width="260">
+  <img src="screenshots/start-light.png" alt="Start screen in light mode" width="260">
   <img src="screenshots/parked-dark.png" alt="Parked car in dark mode" width="260">
-  <img src="screenshots/search-light.png" alt="Searching for an address" width="260">
+  <img src="screenshots/search-light.png" alt="Searching for an address and placing the pin" width="260">
 </p>
 
 ## Download
 
 Get the latest APK from the [Releases](../../releases) page.
 
-Dude needs Android 16 or newer.
+Dude, Where's My Car? needs Android 16 or newer.
 
 ## Credits
 

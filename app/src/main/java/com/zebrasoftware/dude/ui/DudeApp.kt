@@ -1,5 +1,29 @@
 package com.zebrasoftware.dude.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.zebrasoftware.dude.data.CarPhotoStore
+import com.zebrasoftware.dude.data.loadPhoto
+import java.io.File
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -40,12 +64,10 @@ import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -155,6 +177,7 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val store = remember { ParkingStore(context.applicationContext) }
+    val photos = remember { CarPhotoStore(context) }
     var spot by remember { mutableStateOf(store.load()) }
     var floor by rememberSaveable { mutableStateOf(spot?.floor.orEmpty()) }
     var mode by remember { mutableStateOf(if (spot != null) Mode.Parked else Mode.Choose) }
@@ -162,6 +185,10 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
     var pickHint by remember { mutableStateOf<String?>(null) }
     var address by remember { mutableStateOf<String?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var photoVersion by remember { mutableIntStateOf(0) }
+    var photoThumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
+    var showPhoto by rememberSaveable { mutableStateOf(false) }
+    var confirmDeletePhoto by rememberSaveable { mutableStateOf(false) }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     var locateJob by remember { mutableStateOf<Job?>(null) }
 
@@ -213,8 +240,14 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
         mode = Mode.Parked
     }
 
+    fun deletePhoto() {
+        photos.delete()
+        photoVersion++
+    }
+
     fun clearSpot() {
         store.clear()
+        deletePhoto()
         spot = null
         floor = ""
         mode = Mode.Choose
@@ -253,17 +286,14 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
                 moveCamera(location.latitude, location.longitude, 17.0)
             }
             locateJob = null
-            when {
-                fix == null -> startPicking(context.getString(R.string.hint_no_fix))
-                fix.accuracy <= GOOD_ACCURACY_M -> {
-                    saveSpot(fix.latitude, fix.longitude)
-                    moveCamera(fix.latitude, fix.longitude)
-                    showMessage(R.string.msg_saved_gps)
-                }
-                else -> {
-                    moveCamera(fix.latitude, fix.longitude)
-                    startPicking(context.getString(R.string.hint_approximate, fix.accuracy.roundToInt()))
-                }
+            // GPS only places the pin. The user can still move the map to adjust it,
+            // or search, before confirming with Park here.
+            if (fix == null) {
+                startPicking(context.getString(R.string.hint_no_fix))
+            } else {
+                moveCamera(fix.latitude, fix.longitude)
+                val hint = if (fix.accuracy <= GOOD_ACCURACY_M) R.string.hint_gps_found else R.string.hint_approximate
+                startPicking(context.getString(hint, fix.accuracy.roundToInt()))
             }
         }
     }
@@ -291,6 +321,25 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
             !isLocationEnabled(context) ->
                 locationSettingsLauncher.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             else -> startLocating()
+        }
+    }
+
+    // The phone's camera app takes the photo, so Dude needs no camera permission.
+    val takePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
+        if (taken && photos.commitPending()) {
+            photoVersion++
+            showMessage(R.string.msg_photo_saved)
+        } else {
+            photos.discardPending()
+        }
+    }
+
+    fun takePhoto() {
+        try {
+            takePhotoLauncher.launch(photos.pendingUri())
+        } catch (_: ActivityNotFoundException) {
+            photos.discardPending()
+            showMessage(R.string.msg_no_camera)
         }
     }
 
@@ -384,7 +433,44 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
         focusManager.clearFocus()
     }
 
+    LaunchedEffect(photoVersion) {
+        photoThumbnail = loadPhoto(photos.file, maxSize = 256)
+    }
+
     // ---- UI ---------------------------------------------------------------------
+
+    if (showPhoto) {
+        PhotoViewer(
+            file = photos.file,
+            version = photoVersion,
+            onDismiss = { showPhoto = false },
+            onRetake = ::takePhoto,
+            onDelete = { confirmDeletePhoto = true }
+        )
+    }
+
+    if (confirmDeletePhoto) {
+        AlertDialog(
+            onDismissRequest = { confirmDeletePhoto = false },
+            icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+            title = { Text(stringResource(R.string.delete_photo_title)) },
+            text = { Text(stringResource(R.string.delete_photo_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeletePhoto = false
+                    showPhoto = false
+                    deletePhoto()
+                }) {
+                    Text(stringResource(R.string.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeletePhoto = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 
     if (showSettings) {
         SettingsSheet(settings = settings, onDismiss = { showSettings = false })
@@ -549,6 +635,9 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
                     onFloorChange = { floor = it },
                     onFloorDone = ::commitFloor,
                     onFloorFocusChange = { floorFocused = it },
+                    floorEnabled = spot != null,
+                    photo = photoThumbnail,
+                    onPhotoClick = { if (photoThumbnail != null) showPhoto = true else takePhoto() },
                     modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
                     showTrailing = mode == Mode.Parked || mode == Mode.Locating,
                     trailing = {
@@ -566,25 +655,18 @@ internal fun DudeApp(settings: DudeSettings, darkTheme: Boolean) {
                             PanelButton(Icons.Filled.Navigation, stringResource(R.string.action_navigate)) {
                                 currentSpot?.let { navigate(context, it) }
                             }
-                            PanelButton(Icons.Filled.EditLocationAlt, stringResource(R.string.action_change)) {
-                                startPicking(recenter = true)
-                            }
                         }
                         Mode.Picking -> {
-                            PanelButton(Icons.Filled.MyLocation, stringResource(R.string.action_use_gps), onClick = ::useGps)
                             PanelButton(Icons.Filled.Check, stringResource(R.string.action_park_here), onClick = ::confirmPickedSpot)
                         }
                         Mode.Locating -> {
-                            PanelButton(Icons.Filled.Close, stringResource(R.string.action_cancel), onClick = ::cancelChoosing)
-                            PanelButton(Icons.Filled.EditLocationAlt, stringResource(R.string.action_pick_instead)) {
-                                startPicking()
+                            PanelButton(Icons.Filled.Search, stringResource(R.string.action_search_instead)) {
+                                startPicking(withSearch = true)
                             }
                         }
                         Mode.Choose -> {
-                            PanelButton(Icons.Filled.AddLocationAlt, stringResource(R.string.action_set_spot)) {
-                                commitFloor()
-                                startPicking(recenter = true)
-                            }
+                            // Tries GPS first; without location access it falls back to searching.
+                            PanelButton(Icons.Filled.AddLocationAlt, stringResource(R.string.action_set_spot), onClick = ::useGps)
                         }
                     }
                 }
@@ -726,6 +808,9 @@ private fun PanelLayout(
     onFloorChange: (String) -> Unit,
     onFloorDone: () -> Unit,
     onFloorFocusChange: (Boolean) -> Unit,
+    floorEnabled: Boolean,
+    photo: ImageBitmap?,
+    onPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
     showTrailing: Boolean = false,
     trailing: @Composable () -> Unit = {},
@@ -766,7 +851,22 @@ private fun PanelLayout(
                 }
             }
         }
-        FloorField(floor, onFloorChange, onFloorDone, onFocusChange = onFloorFocusChange)
+        // Parking floor with the car photo button beside it. Bottom-aligned, because the
+        // text field has a little extra room above it for its label.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            FloorField(
+                floor = floor,
+                onFloorChange = onFloorChange,
+                onDone = onFloorDone,
+                modifier = Modifier.weight(1f),
+                enabled = floorEnabled,
+                onFocusChange = onFloorFocusChange
+            )
+            PhotoButton(photo = photo, enabled = floorEnabled, onClick = onPhotoClick)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = buttons)
     }
 }
@@ -782,6 +882,154 @@ private fun RowScope.PanelButton(icon: ImageVector, text: String, onClick: () ->
         Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+// ---- Car photo ----------------------------------------------------------------
+
+/**
+ * Round button next to the parking floor: a camera when there is no photo yet,
+ * otherwise a small preview of the photo that opens it.
+ */
+@Composable
+private fun PhotoButton(photo: ImageBitmap?, enabled: Boolean, onClick: () -> Unit) {
+    val description = stringResource(
+        if (photo == null) R.string.action_take_photo else R.string.action_view_photo
+    )
+    // Disabled colours match a disabled Material 3 filled button.
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(56.dp)
+            .semantics { contentDescription = description },
+        shape = CircleShape,
+        color = if (enabled) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+        contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        border = if (photo != null) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (photo != null) {
+                Image(
+                    bitmap = photo,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                )
+            } else {
+                Icon(Icons.Filled.PhotoCamera, contentDescription = null)
+            }
+        }
+    }
+}
+
+/**
+ * Full-screen view of the car photo. Pinch to zoom, double-tap to reset.
+ * The buttons at the bottom match the main screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PhotoViewer(
+    file: File,
+    version: Int,
+    onDismiss: () -> Unit,
+    onRetake: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var image by remember { mutableStateOf<ImageBitmap?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(version) {
+        image = loadPhoto(file, maxSize = 2048)
+        loaded = true
+        scale = 1f
+        offset = Offset.Zero
+    }
+
+    val zoomState = rememberTransformableState { zoom, pan, _ ->
+        scale = (scale * zoom).coerceIn(1f, 5f)
+        offset = if (scale == 1f) Offset.Zero else offset + pan * scale
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+            Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.photo_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
+                        }
+                    },
+                    // The column above already keeps clear of the status bar.
+                    windowInsets = WindowInsets(0, 0, 0, 0)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(start = MAP_MARGIN, end = MAP_MARGIN, top = 8.dp)
+                        .clip(RoundedCornerShape(MAP_CORNER - MAP_MARGIN))
+                        .background(MaterialTheme.colorScheme.surfaceContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val current = image
+                    when {
+                        current != null -> Image(
+                            bitmap = current,
+                            contentDescription = stringResource(R.string.photo_title),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    detectTapGestures(onDoubleTap = {
+                                        scale = 1f
+                                        offset = Offset.Zero
+                                    })
+                                }
+                                .transformable(zoomState)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                }
+                        )
+                        !loaded -> CircularProgressIndicator()
+                        else -> Text(
+                            text = stringResource(R.string.photo_missing),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PanelButton(Icons.Filled.Delete, stringResource(R.string.action_delete), onClick = onDelete)
+                    PanelButton(Icons.Filled.PhotoCamera, stringResource(R.string.action_retake), onClick = onRetake)
+                }
+            }
+        }
     }
 }
 
